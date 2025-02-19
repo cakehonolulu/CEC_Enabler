@@ -5,12 +5,15 @@
 #include "queue.h"
 #include "task.h"
 
+#include "class/hid/hid.h"
 #include "hardware/timer.h"
 #include "pico/stdlib.h"
 #include "tusb.h"
 
+#include "cec-config.h"
 #include "hdmi-cec.h"
 #include "hdmi-ddc.h"
+#include "nvs.h"
 
 /* Intercept HDMI CEC commands, convert to a keypress and send to HID task
  * handler.
@@ -23,39 +26,6 @@
 
 #define NOTIFY_RX ((UBaseType_t)0)
 #define NOTIFY_TX ((UBaseType_t)1)
-
-typedef struct {
-  const char *name;
-  uint8_t key;
-} command_t;
-
-/*
- * Key mapping from HDMI user control to HID keyboard entry.
- */
-const command_t keymap[256] = {[0x00] = {"User Control Select", HID_KEY_ENTER},
-                               [0x01] = {"User Control Up", HID_KEY_ARROW_UP},
-                               [0x02] = {"User Control Down", HID_KEY_ARROW_DOWN},
-                               [0x03] = {"User Control Left", HID_KEY_ARROW_LEFT},
-                               [0x04] = {"User Control Right", HID_KEY_ARROW_RIGHT},
-                               [0x0a] = {"User Control Options", HID_KEY_C},
-                               [0x0d] = {"User Control Exit", HID_KEY_BACKSPACE},
-                               [0x20] = {"User Control 0", HID_KEY_0},
-                               [0x21] = {"User Control 1", HID_KEY_1},
-                               [0x22] = {"User Control 2", HID_KEY_2},
-                               [0x23] = {"User Control 3", HID_KEY_3},
-                               [0x24] = {"User Control 4", HID_KEY_4},
-                               [0x25] = {"User Control 5", HID_KEY_5},
-                               [0x26] = {"User Control 6", HID_KEY_6},
-                               [0x27] = {"User Control 7", HID_KEY_7},
-                               [0x28] = {"User Control 8", HID_KEY_8},
-                               [0x29] = {"User Control 9", HID_KEY_9},
-                               [0x35] = {"User Control Display Information", HID_KEY_I},
-                               [0x44] = {"User Control Play", HID_KEY_P},
-                               [0x45] = {"User Control Stop", HID_KEY_X},
-                               [0x46] = {"User Control Pause", HID_KEY_SPACE},
-                               [0x48] = {"User Control Rewind", HID_KEY_R},
-                               [0x49] = {"User Control Fast Forward", HID_KEY_F},
-                               [0x51] = {"User Control Subtitle", HID_KEY_L}};
 
 typedef enum {
   CEC_ID_IMAGE_VIEW_ON = 0x04,
@@ -121,6 +91,9 @@ const char *cec_message[] = {
     [CEC_ID_ABORT] = "Abort",
 };
 
+/** The running CEC configuration. */
+static cec_config_t config = {0x0};
+
 #define DEFAULT_TYPE 0x04  // HDMI Playback 1
 
 // HDMI Playback logical addresses
@@ -130,6 +103,12 @@ static const uint8_t address[NUM_ADDRESS] = {0x04, 0x08, 0x0b, 0x0f};
 /* The HDMI address for this device.  Respond to CEC sent to this address. */
 static uint8_t laddr = address[0];
 
+/* The HDMI physical address. */
+static uint16_t paddr = 0x0000;
+
+/* CEC statistics. */
+static hdmi_cec_stats_t cec_stats;
+
 /* Construct the frame address header. */
 #define HEADER0(iaddr, daddr) ((iaddr << 4) | daddr)
 
@@ -138,7 +117,7 @@ TaskHandle_t xCECTask;
 /**
  * Get milliseconds since boot.
  */
-static uint64_t uptime_ms(void) {
+uint64_t cec_get_uptime_ms(void) {
   return (time_us_64() / 1000);
 }
 
@@ -146,8 +125,8 @@ static uint64_t uptime_ms(void) {
  * Print a timestamped trace log prefix.
  */
 static void log_prefix(uint8_t initiator, uint8_t destination, bool send) {
-  printf("[%10llu] %02x %s %02x: ", uptime_ms(), send ? initiator : destination, send ? "->" : "<-",
-         send ? destination : initiator);
+  printf("[%10llu] %02x %s %02x: ", cec_get_uptime_ms(), send ? initiator : destination,
+         send ? "->" : "<-", send ? destination : initiator);
 }
 
 /**
@@ -311,9 +290,11 @@ static uint8_t recv_frame(uint8_t *pld, uint8_t address) {
 
   if (rx_frame.state == HDMI_FRAME_STATE_ABORT) {
     // printf("ABORT\n");
+    cec_stats.rx_abort_frames++;
     return 0;
   }
 
+  cec_stats.rx_frames++;
   return rx_frame.message->len;
 }
 
@@ -410,6 +391,12 @@ static bool hdmi_tx_frame(uint8_t *data, uint8_t len) {
   add_alarm_at(from_us_since_boot(time_us_64()), hdmi_tx_callback, &frame, true);
   ulTaskNotifyTakeIndexed(NOTIFY_TX, pdTRUE, portMAX_DELAY);
   // printf("high water mark = %lu\n", uxTaskGetStackHighWaterMark(xCECTask));
+  if (frame.ack) {
+    cec_stats.tx_frames++;
+  } else {
+    cec_stats.tx_noack_frames++;
+  }
+
   return frame.ack;
 }
 
@@ -519,6 +506,10 @@ static void active_source(uint8_t initiator, uint16_t physical_address) {
   log_printf(initiator, 0x0f, false, "[%s]\n", cec_message[CEC_ID_ACTIVE_SOURCE]);
 }
 
+void cec_get_stats(hdmi_cec_stats_t *stats) {
+  *stats = cec_stats;
+}
+
 static uint8_t allocate_logical_address(void) {
   uint8_t a;
   for (unsigned int i = 0; i < NUM_ADDRESS; i++) {
@@ -533,11 +524,27 @@ static uint8_t allocate_logical_address(void) {
   return a;
 }
 
+uint16_t get_physical_address(const cec_config_t *config) {
+  return (config->physical_address == 0x0000) ? ddc_get_physical_address()
+                                              : config->physical_address;
+}
+
+uint16_t cec_get_physical_address(void) {
+  return paddr;
+}
+
+uint8_t cec_get_logical_address(void) {
+  return laddr;
+}
+
 void cec_task(void *data) {
   QueueHandle_t *q = (QueueHandle_t *)data;
 
-  // pause 5000ms
-  vTaskDelay(pdMS_TO_TICKS(5000));
+  // load configuration
+  nvs_load_config(&config);
+
+  // pause for EDID to settle
+  vTaskDelay(pdMS_TO_TICKS(config.edid_delay_ms));
 
   gpio_init(CEC_PIN);
   gpio_disable_pulls(CEC_PIN);
@@ -547,7 +554,7 @@ void cec_task(void *data) {
   irq_set_enabled(IO_IRQ_BANK0, true);
   gpio_set_irq_enabled(CEC_PIN, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, false);
 
-  uint16_t paddr = ddc_get_physical_address();
+  paddr = get_physical_address(&config);
   laddr = allocate_logical_address();
 
   while (true) {
@@ -596,7 +603,7 @@ void cec_task(void *data) {
         case CEC_ID_SYSTEM_AUDIO_MODE_STATUS:
           break;
         case CEC_ID_ROUTING_CHANGE:
-          paddr = ddc_get_physical_address();
+          paddr = get_physical_address(&config);
           image_view_on(laddr, 0x00);
           break;
         case CEC_ID_ACTIVE_SOURCE:
@@ -605,7 +612,7 @@ void cec_task(void *data) {
         case CEC_ID_REPORT_PHYSICAL_ADDRESS:
           // On broadcast receive, do the same
           if ((initiator == 0x00) && (destination == 0x0f)) {
-            paddr = ddc_get_physical_address();
+            paddr = get_physical_address(&config);
             laddr = allocate_logical_address();
             if (paddr != 0x0000) {
               report_physical_address(laddr, 0x0f, paddr, DEFAULT_TYPE);
@@ -670,7 +677,7 @@ void cec_task(void *data) {
               printf("[User Control Volume Down]");
               break;
             default: {
-              command_t command = keymap[pld[2]];
+              command_t command = config.keymap[pld[2]];
               if (command.name != NULL) {
                 printf(command.name);
                 xQueueSend(*q, &command.key, pdMS_TO_TICKS(10));
