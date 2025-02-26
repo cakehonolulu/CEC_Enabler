@@ -4,8 +4,12 @@ set(PROJECT pico-cec)
 set(FAMILY rp2040)
 set(BOARD "pico_sdk") # Configure TinyUSB use pico-sdk board configuration
 set(PICO_BOARD "seeed_xiao_rp2040" CACHE STRING "Raspberry Pi Pico board type.")
-#set(PICO_BOARD "waveshare_rp3040_zero" CACHE STRING "Raspberry Pi Pico board type.")
+
+#set(PICO_BOARD "waveshare_rp2040_zero" CACHE STRING "Raspberry Pi Pico board type.")
+#set(PICO_BOARD "vcc_gnd_yd_2040" CACHE STRING "Raspberry Pi Pico board type.")
 #set(PICO_BOARD "pico" CACHE STRING "Raspberry Pi Pico board type.")
+
+set(PICO_BOARD_HEADER_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/include/boards)
 
 # Include pico-sdk and tinyusb (must be before project)
 include(pico-sdk/pico_sdk_init.cmake)
@@ -72,6 +76,7 @@ target_include_directories(${PROJECT} PRIVATE
 
 set(CEC_PIN "3" CACHE STRING "GPIO pin for HDMI CEC.")
 set(PICO_CEC_VERSION "unknown" CACHE STRING "Pico-CEC version string.")
+set(KEYMAP_DEFAULT "KODI" CACHE STRING "Default keymap, specify KODI or MISTER.")
 
 set_source_files_properties(src/hdmi-cec.c PROPERTIES COMPILE_DEFINITIONS
   "CEC_PIN=${CEC_PIN}")
@@ -81,7 +86,8 @@ set_source_files_properties(src/usb-cdc.c PROPERTIES COMPILE_DEFINITIONS
 
 # Undefine TinyUSB built-in OS, redefined in our tusb_config.h
 target_compile_options(${PROJECT} PRIVATE
-  -UCFG_TUSB_OS)
+  -UCFG_TUSB_OS
+  -DKEYMAP_DEFAULT_${KEYMAP_DEFAULT}=1)
 
 target_link_libraries(${PROJECT}
   crc
