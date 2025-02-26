@@ -1,12 +1,12 @@
 cmake_minimum_required(VERSION 3.13)
 
-set(PROJECT pico-cec)
+set(PROJECT CEC_Enabler)
 set(FAMILY rp2040)
 set(BOARD "pico_sdk") # Configure TinyUSB use pico-sdk board configuration
-set(PICO_BOARD "seeed_xiao_rp2040" CACHE STRING "Raspberry Pi Pico board type.")
+#set(PICO_BOARD "seeed_xiao_rp2040" CACHE STRING "Raspberry Pi Pico board type.")
 
 #set(PICO_BOARD "waveshare_rp2040_zero" CACHE STRING "Raspberry Pi Pico board type.")
-#set(PICO_BOARD "vcc_gnd_yd_2040" CACHE STRING "Raspberry Pi Pico board type.")
+set(PICO_BOARD "cec_enabler_2040z" CACHE STRING "Raspberry Pi Pico board type.")
 #set(PICO_BOARD "pico" CACHE STRING "Raspberry Pi Pico board type.")
 
 set(PICO_BOARD_HEADER_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/include/boards)
@@ -74,9 +74,9 @@ target_include_directories(${PROJECT} PRIVATE
   ${PROJECT_SOURCE_DIR}/include/tusb
   ${CMAKE_CURRENT_BINARY_DIR}/generated)
 
-set(CEC_PIN "3" CACHE STRING "GPIO pin for HDMI CEC.")
+set(CEC_PIN "6" CACHE STRING "GPIO pin for HDMI CEC.")
 set(PICO_CEC_VERSION "unknown" CACHE STRING "Pico-CEC version string.")
-set(KEYMAP_DEFAULT "KODI" CACHE STRING "Default keymap, specify KODI or MISTER.")
+set(KEYMAP_DEFAULT "MISTER" CACHE STRING "Default keymap, specify KODI or MISTER.")
 
 set_source_files_properties(src/hdmi-cec.c PROPERTIES COMPILE_DEFINITIONS
   "CEC_PIN=${CEC_PIN}")

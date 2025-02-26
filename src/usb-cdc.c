@@ -9,6 +9,7 @@
 #include "nvs.h"
 #include "tclie.h"
 #include "usb-cdc.h"
+#include "blink.h"
 
 #ifndef PICO_CEC_VERSION
 #define PICO_CEC_VERSION "unknown"

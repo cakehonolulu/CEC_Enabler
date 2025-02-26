@@ -12,7 +12,7 @@ typedef enum {
 } blink_state_t;
 
 extern TaskHandle_t xBlinkTask;
-
+//extern uint32_t PICO_DEFAULT_LED_PIN;
 void blink_init(void);
 void blink_task(void *param);
 void blink_set(blink_state_t state);
