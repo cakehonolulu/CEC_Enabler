@@ -1,3 +1,29 @@
+#CEC_Enabler
+
+Ready to go devices are avilible at https://www.laserbear.net/products/cec-enabler
+
+Introducing CEC-Enabler, the solution to your MiSTer platform problem! With CEC-Enabler, you can finally connect your MiSTer to your TV without sacrificing the functionality of your TV. Say goodbye to frustrating CEC issues and hello to seamless compatibility.
+
+This device is able to not only prevent this defect from affecting your TV but is also capable of adding CEC Remote control of the MiSTer menu system from your TV Remote.
+
+LED Codes:
+Blue Flashing 2Hz: Operational and waiting CEC Connection
+Green Flashing 2Hz: CEC Connected and ready to receive control input
+Green Flickering: CEC Remote command received 
+Red Solid: Stack Overflow Error, reboot device to recover.
+
+Not all TVs and TV Remotes have enough buttons for full functionality, to increase compatibility we have created the following control scheme:
+D-Pad controls arrow keys
+Select sends Enter Key
+Back sends F12
+Menu sends F12
+Rewind sends F12
+Fast Forward sends F12
+
+
+Huge thanks to the Pico-CEC project for the stability improvements and helping to integrate our changes into the base code allowing for simple compiler changes to support our dongle.
+
+
 # Pico-CEC
 
 A Raspberry Pi Pico based project to bridge HDMI CEC (Consumer Electronics
