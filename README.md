@@ -1,4 +1,4 @@
-#CEC_Enabler
+# CEC_Enabler
 
 Ready to go devices are avilible at https://www.laserbear.net/products/cec-enabler
 
