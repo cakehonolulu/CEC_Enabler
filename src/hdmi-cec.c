@@ -564,10 +564,10 @@ static void system_audio_mode_status(uint8_t initiator,
 }
 
 static void set_osd_name(uint8_t initiator, uint8_t destination) {
-  uint8_t pld[10] = {
-      HEADER0(initiator, destination), CEC_ID_SET_OSD_NAME, 'P', 'i', 'c', 'o', '-', 'C', 'E', 'C'};
+  uint8_t pld[13] = {
+      HEADER0(initiator, destination), CEC_ID_SET_OSD_NAME, 'R', 'e', 't', 'r', 'o', 'T', 'i', 'n', 'k', '4', 'K'};
 
-  send_frame(10, pld);
+  send_frame(13, pld);
 }
 
 static void report_physical_address(uint8_t initiator,
