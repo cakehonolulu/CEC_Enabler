@@ -209,8 +209,8 @@ This project uses:
 # Hardware
 * Seeed Studio XIAO RP2040 (chosen for form factor)
    * https://www.seeedstudio.com/XIAO-RP2040-v1-0-p-5026.html
-   * Originally prototyped on the Raspberry Pi Pico board (still works with
-     minor build time tweaks)
+   * Originally prototyped on the Raspberry Pi Pico board (still works but
+     requires RGB unhacking)
 * HDMI male/female passthrough adapter
    * Listed as 'HDMI Male and Female Test Board MINI Connector with Board PCB
      2.54mm pitch 19/20pin DP HD A Female To Male Adapter Board'
@@ -225,7 +225,7 @@ This project uses:
 | HDMI male/female adapter | 1 | 4.30 |
 | M3x10mm bolt & nut | 2 | 0.16 |
 | M3x20mm bolt & nut | 2 | 0.17 |
-| Random short wires | 2 | basically free |
+| Random short wires | 4 | basically free |
 | Scunge 3D print from friend | 1 | mostly free |
 | Umpteen hours of engineering | 1 | priceless |
 | Total | | 16.13 |
@@ -247,8 +247,10 @@ https://github.com/gkoh/pico-cec/wiki/Command-Line-Interface-Guide
 In particular, `debug on` will log all CEC traffic to the terminal.
 
 # Future
+* implement CEC send and receive in PIO
 * port to ESP32?
    * WS2812 driver will need platform support, perhaps to RMT
+   * implement CEC in RMT
 
 # References
 Inspiration and/or ground work was obtained from the following:
