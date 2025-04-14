@@ -826,9 +826,16 @@ void cec_task(void *data) {
           if (destination == laddr) {
             blink_set(BLINK_STATE_GREEN_ON);
             command_t command = config.keymap[pld[2]];
+#ifdef DEBUG
+            char buffer[128];
+            snprintf(buffer, sizeof(buffer), "remote cec_key: 0x%02X\n", command.key);
+            tuh_cdc_write(0, buffer, strlen(buffer));
+            tuh_cdc_write_flush(0);
+#else
             if (command.name != NULL) {
               xQueueSend(*q, &command.key, pdMS_TO_TICKS(10));
             }
+#endif
           }
           break;
         case CEC_ID_USER_CONTROL_RELEASED:

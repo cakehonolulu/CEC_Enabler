@@ -1,5 +1,6 @@
 #include <hardware/watchdog.h>
 #include <pico/bootrom.h>
+#include <pico/time.h>
 #include <stdlib.h>
 #include <tusb.h>
 
@@ -23,7 +24,8 @@ static const char *messages[] = {
   [0x13] = "remote phase\n",
   [0x28] = "remote ok\n",
   [0x45] = "remote back\n",
-  [0x4F] = "remote menu\n",
+  [0x4F] = "remote right\n",
+  [0x50] = "remote left\n",
   [0x51] = "remote down\n",
   [0x52] = "remote up\n",
 };
@@ -51,30 +53,52 @@ void usb_device_task(void *param) {
     tuh_task();
   }
 }
-
 void cdc_task(void *param) {
   QueueHandle_t *q = (QueueHandle_t *)param;
+  uint8_t key = 0;
+  static uint8_t last_key = 0;
+  static uint32_t last_press_time = 0;
+  const uint32_t delay_threshold = 1250000;
   static int state = 1;
 
   while (1) {
-    // Poll every 10ms
-    uint8_t key;
-    BaseType_t r = xQueueReceive(*q, &key, pdMS_TO_TICKS(10));
-
-    if (r == pdTRUE) {
-      for (uint8_t idx = 0; idx < CFG_TUH_CDC; idx++) {
-        if (tuh_cdc_mounted(idx)) {
-          if (key == 0x50) {
-            tuh_cdc_write(0, power_messages[state], strlen(power_messages[state]));
-            tuh_cdc_write_flush(0);
-            state = !state;
-          } else if (key < sizeof(messages) / sizeof(messages[0]) && messages[key] != NULL) {
-            tuh_cdc_write(0, messages[key], strlen(messages[key]));
-            tuh_cdc_write_flush(0);
+      // Poll every 10 ms.
+      if (xQueueReceive(*q, &key, pdMS_TO_TICKS(10)) == pdTRUE) {
+          uint32_t now = to_us_since_boot(get_absolute_time());
+          if (key == 0x51 || key == 0x52) {
+              if (last_key == key) {
+                  uint32_t delta = now - last_press_time;
+                  if (delta >= delay_threshold) {
+                      if (key == 0x51) {
+                          tuh_cdc_write(0, power_messages[state], strlen(power_messages[state]));
+                          tuh_cdc_write_flush(0);
+                          state = !state;
+                      } else if (key == 0x52) {
+                          tuh_cdc_write(0, "remote menu\n", strlen("remote menu\n"));
+                          tuh_cdc_write_flush(0);
+                      }
+                      last_key = 0;
+                      last_press_time = 0;
+                  } else {
+                      tuh_cdc_write(0, messages[key], strlen(messages[key]));
+                      tuh_cdc_write_flush(0);
+                      last_press_time = now;
+                  }
+              } else {
+                  tuh_cdc_write(0, messages[key], strlen(messages[key]));
+                  tuh_cdc_write_flush(0);
+                  last_key = key;
+                  last_press_time = now;
+              }
+          } else {
+              if (key < (sizeof(messages) / sizeof(messages[0])) && messages[key] != NULL) {
+                  tuh_cdc_write(0, messages[key], strlen(messages[key]));
+                  tuh_cdc_write_flush(0);
+              }
+              last_key = 0;
+              last_press_time = 0;
           }
-        }
       }
-    }
   }
 }
 
