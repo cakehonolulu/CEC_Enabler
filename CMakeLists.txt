@@ -60,8 +60,6 @@ add_executable(${PROJECT}
   src/main.c
   src/nvs.c
   src/usb-cdc.c
-  src/usb_descriptors.c
-  src/usb_hid.c
   src/ws2812.c
   src/ws2812.pio)
 
@@ -95,7 +93,7 @@ target_link_libraries(${PROJECT}
   pico_unique_id
   hardware_i2c
   hardware_pio
-  tinyusb_device
+  tinyusb_host
   tinyusb_board
   FreeRTOS-Kernel
   tcli)

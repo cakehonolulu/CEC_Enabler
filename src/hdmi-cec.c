@@ -696,6 +696,7 @@ void cec_task(void *data) {
     uint8_t initiator, destination;
     uint8_t key = HID_KEY_NONE;
     uint8_t no_active = 0;
+    (void) key;
 
     pldcnt = recv_frame(pld, laddr);
     // printf("pldcnt = %u\n", pldcnt);
@@ -834,7 +835,7 @@ void cec_task(void *data) {
           if (destination == laddr) {
             blink_set(BLINK_STATE_OFF);
             key = HID_KEY_NONE;
-            xQueueSend(*q, &key, pdMS_TO_TICKS(10));
+            //xQueueSend(*q, &key, pdMS_TO_TICKS(10));
           }
           break;
         case CEC_ID_ABORT:

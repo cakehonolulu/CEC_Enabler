@@ -28,7 +28,7 @@ static void cec_log_task(void *param) {
 
     size_t bytes = xMessageBufferReceive(log_mb, buffer, sizeof(buffer), pdMS_TO_TICKS(10));
     if (bytes > 0) {
-      cdc_log(buffer);
+      //cdc_log(buffer);
     }
   }
 }
